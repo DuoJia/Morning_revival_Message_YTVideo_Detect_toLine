@@ -2,9 +2,9 @@ name: YouTube Video Analyzer
 
 on:
   schedule:
-    # 每 4 小時執行一次 (UTC 時間)
-    - cron: '0 */4 * * *'
-  workflow_dispatch: # 允許你手動按按鈕觸發測試
+    # 每 2 小時執行一次
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
 
 jobs:
   check-and-process:
@@ -14,18 +14,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-# 新增: 安裝 Node.js (yt-dlp 需要它來解密某些參數)
+    # 安裝 Node.js (解決 JavaScript runtime 警告)
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
 
+    # 安裝 FFmpeg (yt-dlp 轉檔 mp3 需要)
     - name: Install FFmpeg
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
-    # ... (後面接 Set up Python) ...
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -38,7 +38,10 @@ jobs:
 
     - name: Run Script
       env:
-        # ... (這裡原本的環境變數不用動) ...
+        # 這裡就是原本漏掉的關鍵一行！
+        YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
+        
+        # 其他原本的設定
         YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
         GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
