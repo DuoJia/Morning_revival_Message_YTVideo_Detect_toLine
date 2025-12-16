@@ -60,32 +60,30 @@ def check_if_processed(video_id):
     except: return False, None
 
 def download_audio(video_link, output_filename="temp_audio"):
-    """使用 yt-dlp 下載音訊 (含 Cookies 修復)"""
+    """使用 yt-dlp 下載音訊 (iOS 偽裝模式，不使用 Cookies)"""
     print(f"   Downloading audio from {video_link}...")
     
-    # 1. 建立暫存 Cookies 檔案
-    cookie_file = "cookies.txt"
-    if COOKIES_CONTENT:
-        with open(cookie_file, "w") as f:
-            f.write(COOKIES_CONTENT)
-    
+    # 設定 yt-dlp 參數
     ydl_opts = {
-        # 修改這裡：放寬格式選擇，優先選 m4a/aac (YouTube原生音訊)，若無則選 bestaudio
-        'format': 'bestaudio[ext=m4a]/bestaudio/best',
+        'format': 'bestaudio/best',
+        # 關鍵修正 1: 強制使用 iOS 客戶端 (繞過 IP 封鎖與 n-challenge)
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['ios']
+            }
+        },
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '192', 
+            'preferredquality': '128', 
         }],
         'outtmpl': output_filename,
         'quiet': True,
-        'cookiefile': cookie_file if COOKIES_CONTENT else None,
-        # 使用更通用的 User Agent
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        # 增加這行：忽略某些非致命錯誤
-        'ignoreerrors': True,
-        # 增加這行：告訴 yt-dlp 不要放棄嘗試
+        # 關鍵修正 2: 移除 cookies (避免地理位置衝突)
+        'cookiefile': None, 
+        # 關鍵修正 3: 忽略憑證與非致命錯誤
         'nocheckcertificate': True,
+        'ignoreerrors': True,
     }
     
     try:
@@ -93,17 +91,11 @@ def download_audio(video_link, output_filename="temp_audio"):
             ydl.download([video_link])
         
         final_file = f"{output_filename}.mp3"
-        
-        if os.path.exists(cookie_file):
-            os.remove(cookie_file)
-            
         if os.path.exists(final_file):
             return final_file
         return None
     except Exception as e:
         print(f"   Download failed: {e}")
-        if os.path.exists(cookie_file):
-            os.remove(cookie_file)
         return None
 
 def analyze_audio_with_gemini(audio_path):
