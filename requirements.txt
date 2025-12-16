@@ -1,0 +1,6 @@
+requests
+feedparser
+gspread
+oauth2client
+youtube-transcript-api
+google-generativeai
