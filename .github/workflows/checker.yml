@@ -22,7 +22,8 @@ jobs:
     - name: Install Dependencies
       # 這裡改用 requirements.txt 會更正規，確保你的 repo 根目錄有那個檔案
       run: |
-        pip install requests feedparser gspread oauth2client youtube-transcript-api google-generativeai
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
     - name: Run Script
       env:
