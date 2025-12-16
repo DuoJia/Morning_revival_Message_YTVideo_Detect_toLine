@@ -17,6 +17,9 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 LINE_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_USER_ID = os.getenv("LINE_USER_ID")
 
+# 新增: 讀取 Cookies Secret
+COOKIES_CONTENT = os.getenv("YOUTUBE_COOKIES")
+
 try:
     key_str = os.getenv("GCP_SA_KEY")
     GCP_SA_KEY = json.loads(key_str) if key_str else None
@@ -25,7 +28,6 @@ except Exception as e:
 
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# 修改 Prompt，告訴 Gemini 它會聽到聲音
 SYSTEM_PROMPT = """
 你是一位精通聖經與教會信息的助理。你將會收到一段教會聚會的錄音檔。
 請仔細聆聽內容並進行分析（若音質不佳請盡量辨識）。
@@ -58,43 +60,58 @@ def check_if_processed(video_id):
     except: return False, None
 
 def download_audio(video_link, output_filename="temp_audio"):
-    """使用 yt-dlp 下載音訊"""
+    """使用 yt-dlp 下載音訊 (含 Cookies 修復)"""
     print(f"   Downloading audio from {video_link}...")
     
-    # 設定下載參數：轉成 mp3，單聲道(省容量)，低比特率(省容量，語音夠用)
+    # 1. 建立暫存 Cookies 檔案
+    cookie_file = "cookies.txt"
+    if COOKIES_CONTENT:
+        with open(cookie_file, "w") as f:
+            f.write(COOKIES_CONTENT)
+    else:
+        print("⚠️ Warning: No YOUTUBE_COOKIES found in Secrets. Download might fail.")
+
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '32', # 32k 對語音夠了，且檔案極小
+            'preferredquality': '32', 
         }],
         'outtmpl': output_filename,
         'quiet': True,
+        # 關鍵修正: 告訴 yt-dlp 使用這個 Cookies 檔案
+        'cookiefile': cookie_file if COOKIES_CONTENT else None,
+        # 額外修正: 模擬瀏覽器 User Agent，降低被擋機率
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_link])
         
-        # yt-dlp 會自動加上副檔名
         final_file = f"{output_filename}.mp3"
+        
+        # 下載完後刪除 cookies 檔案，保持環境乾淨
+        if os.path.exists(cookie_file):
+            os.remove(cookie_file)
+            
         if os.path.exists(final_file):
             return final_file
         return None
     except Exception as e:
         print(f"   Download failed: {e}")
+        # 失敗也要記得刪除 cookies
+        if os.path.exists(cookie_file):
+            os.remove(cookie_file)
         return None
 
 def analyze_audio_with_gemini(audio_path):
-    """上傳音檔並分析"""
     genai.configure(api_key=GEMINI_KEY)
     
     print("   Uploading to Gemini...")
-    # 1. 上傳檔案
     audio_file = genai.upload_file(path=audio_path)
     
-    # 2. 等待檔案處理完成 (通常音訊很快，但影片需要時間)
     while audio_file.state.name == "PROCESSING":
         print("   Processing audio file...")
         time.sleep(2)
@@ -104,12 +121,8 @@ def analyze_audio_with_gemini(audio_path):
         raise ValueError("Audio processing failed in Gemini.")
 
     print("   Generating content...")
-    # 3. 傳送 Prompt + 檔案
     model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content([SYSTEM_PROMPT, audio_file])
-    
-    # 4. 刪除雲端暫存檔 (好習慣)
-    # genai.delete_file(audio_file.name) # 視需求可加，Free tier 會自動清
     
     return response.text
 
@@ -131,7 +144,7 @@ def process_channel(channel_id):
         print(">> Skipped (Processed)")
         return
 
-    # --- 改用聽覺分析流程 ---
+    # --- 聽覺分析流程 ---
     audio_file = download_audio(video['link'])
     
     if not audio_file:
@@ -151,7 +164,6 @@ def process_channel(channel_id):
     except Exception as e:
         print(f">> Analysis Error: {e}")
     finally:
-        # 清理本地檔案
         if os.path.exists(audio_file):
             os.remove(audio_file)
 
