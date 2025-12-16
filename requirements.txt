@@ -3,4 +3,5 @@ feedparser
 gspread
 oauth2client
 google-generativeai
-yt-dlp
+# 修改這行：直接從 GitHub 安裝最新開發版，修復 n challenge 問題
+yt-dlp @ git+https://github.com/yt-dlp/yt-dlp.git@master
