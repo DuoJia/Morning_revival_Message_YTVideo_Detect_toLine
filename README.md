@@ -1,0 +1,2 @@
+# Morning_revival_Message_YTVideo_Detect_toLine
+Youtube影片更新後，自動發送影片內容經過Gemini分析給我的Line
