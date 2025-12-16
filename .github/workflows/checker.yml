@@ -1,0 +1,35 @@
+name: YouTube Video Analyzer
+
+on:
+  schedule:
+    # 每 4 小時執行一次 (UTC 時間)
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # 允許你手動按按鈕觸發測試
+
+jobs:
+  check-and-process:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Dependencies
+      # 這裡改用 requirements.txt 會更正規，確保你的 repo 根目錄有那個檔案
+      run: |
+        pip install requests feedparser gspread oauth2client youtube-transcript-api google-generativeai
+
+    - name: Run Script
+      env:
+        YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        LINE_ACCESS_TOKEN: ${{ secrets.LINE_ACCESS_TOKEN }}
+        LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      run: python main.py
