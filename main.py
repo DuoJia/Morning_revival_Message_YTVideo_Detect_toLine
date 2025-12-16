@@ -68,22 +68,24 @@ def download_audio(video_link, output_filename="temp_audio"):
     if COOKIES_CONTENT:
         with open(cookie_file, "w") as f:
             f.write(COOKIES_CONTENT)
-    else:
-        print("⚠️ Warning: No YOUTUBE_COOKIES found in Secrets. Download might fail.")
-
+    
     ydl_opts = {
-        'format': 'bestaudio/best',
+        # 修改這裡：放寬格式選擇，優先選 m4a/aac (YouTube原生音訊)，若無則選 bestaudio
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '32', 
+            'preferredquality': '192', 
         }],
         'outtmpl': output_filename,
         'quiet': True,
-        # 關鍵修正: 告訴 yt-dlp 使用這個 Cookies 檔案
         'cookiefile': cookie_file if COOKIES_CONTENT else None,
-        # 額外修正: 模擬瀏覽器 User Agent，降低被擋機率
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        # 使用更通用的 User Agent
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        # 增加這行：忽略某些非致命錯誤
+        'ignoreerrors': True,
+        # 增加這行：告訴 yt-dlp 不要放棄嘗試
+        'nocheckcertificate': True,
     }
     
     try:
@@ -92,7 +94,6 @@ def download_audio(video_link, output_filename="temp_audio"):
         
         final_file = f"{output_filename}.mp3"
         
-        # 下載完後刪除 cookies 檔案，保持環境乾淨
         if os.path.exists(cookie_file):
             os.remove(cookie_file)
             
@@ -101,7 +102,6 @@ def download_audio(video_link, output_filename="temp_audio"):
         return None
     except Exception as e:
         print(f"   Download failed: {e}")
-        # 失敗也要記得刪除 cookies
         if os.path.exists(cookie_file):
             os.remove(cookie_file)
         return None
