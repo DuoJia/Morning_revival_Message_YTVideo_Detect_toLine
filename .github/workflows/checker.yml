@@ -34,7 +34,8 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        # 加入 --no-cache-dir 強制不使用快取，確保抓到最新版
+        pip install --no-cache-dir -r requirements.txt
 
     - name: Run Script
       env:
