@@ -14,12 +14,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 新增這個步驟：安裝 FFmpeg
+# 新增: 安裝 Node.js (yt-dlp 需要它來解密某些參數)
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
     - name: Install FFmpeg
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
+    # ... (後面接 Set up Python) ...
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
